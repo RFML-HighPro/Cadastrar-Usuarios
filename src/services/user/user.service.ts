@@ -2,12 +2,10 @@ import { UserRepository } from "../../repository/user.repository"
 import { ServicesGeneralUser } from "./general-services"
 import { responseHTTP } from "../../utils/response-http"
 import { UserDto } from "../../dtos/user.dto"
-import { authEmail, authEmail, sendEmail } from "../../utils/email"
-import { AlterPwd, ResponseAuth } from "../../interfaces/interfaces.services"
+import { authEmail, sendEmail } from "../../utils/email"
+import { ResponseAuth } from "../../interfaces/interfaces.services"
 import { authPassword, encryptpwd } from "../../utils/encryption"
-import { denyNull } from "../../utils/find-not-null"
 import { validatePwd } from "../../utils/structure-credentials"
-import Stream from "pg-query-stream"
 
 export class UserService {
     constructor(
@@ -17,56 +15,66 @@ export class UserService {
     public async updateUser(updateUser: UserDto) {
         try {
             let userExists = await this.repository.readById(updateUser)
-
             if (!userExists) throw new Error("Usuário não encontrado!")
             updateUser = this.user.validateUser(updateUser)
-
-            let authPwd = authPassword(updateUser, userExists.password)
-            if (!authPwd) throw new Error("Senha Incorreta!")
-
-            console.log("password certo!")
+            let auth = authPassword(updateUser, userExists.password)
+            if (!auth) throw new Error("Senha Incorreta!")
             if (!!updateUser.email) {
-                let userAuth = await this.repository.exists(updateUser)
-                if (!userAuth) throw new Error("Email já em uso!")
-                // userAuth = await authEmail(updateUser.email)
-                // if (!userAuth) throw new Error("Email inválido!")
+                auth = await this.repository.exists(updateUser)
+                if (!!auth) throw new Error("Email já em uso!")
+                auth = await authEmail(updateUser.email)
+                if (!auth) throw new Error("Email inválido!")
             }
-            // if (!!updateUser.cpf) {
-            //     let userAuth = await this.repository.exists(updateUser)
-            //     if (!!userAuth) throw new Error("CPF em uso!")
-            // }
-            // let userUpdate = await this.repository.save(updateUser)
-            // if (!userUpdate) throw new Error("Atualização falhou!")
-            // sendEmail({
-            //     email: userExists.email,
-            //     option: "update",
-            //     auth: true,
-            // })
+            if (!!updateUser.cpf) {
+                auth = await this.repository.exists(updateUser)
+                if (!!auth) throw new Error("CPF em uso!")
+            }
+            updateUser = encryptpwd(updateUser)
+            let userUpdate = await this.repository.save(updateUser)
+            if (!userUpdate) throw new Error("Atualização falhou!")
+            sendEmail({
+                email: userExists.email,
+                option: "update",
+                auth: true,
+            })
             return responseHTTP<string>(this.user.emitSucess("upd"), 200)
         } catch (error: any) {
             return responseHTTP<string>(error.message, 400)
         }
     }
-    public async alterPwdUser(password: AlterPwd) {
+    public async alterPwdUser(password: UserDto) {
         try {
-            let user = await this.repository.readById(password)
-            if (!user) throw new Error("Usuário não encontrado!")
+            let userExist = await this.repository.readById(password)
+            if (!userExist) throw new Error("Usuário não encontrado!")
             password = validatePwd(password)
-            let pwdIsEqual = authPassword(password, user.password)
-            if (!pwdIsEqual) throw new Error("Senha Incorreta!")
-            password.password = password.newPassword
-            let pwdNewExist = await this.repository.exists(password)
-            if (!!pwdNewExist) throw new Error("Nova senha em uso!")
-            user.password = password.newPassword
-            user = encryptpwd(password)
+            let authPwd = authPassword(password, userExist.password)
+            if (!authPwd) throw new Error("Senha Incorreta!")
+            let users = await this.repository.readAll()
+            password.password = String(password.newPassword)
+            password = this.user.validateCredentials(users, password)
+            password = encryptpwd(password)
             let pwdUpdate = await this.repository.save(password)
             if (!pwdUpdate) throw new Error("Atualização falhou!")
             sendEmail({
-                email: user.email,
+                email: userExist.email,
                 option: "altPwd",
                 auth: true,
             })
             return responseHTTP<string>(this.user.emitSucess("pwd"), 200)
+        } catch (error: any) {
+            return responseHTTP<string>(error.message, 400)
+        }
+    }
+    public async authUser(userAuth: UserDto) {
+        try {
+            userAuth = this.user.validateUser(userAuth)
+            let user = await this.repository.read(userAuth)
+            if (!user) throw new Error("Usuário não encontrado!")
+            let pwdIsEqual = authPassword(userAuth, user.password)
+            if (!pwdIsEqual) throw new Error("Senha Incorreta!")
+            let responseAuth = this.user.returnAuthUser(user)
+            if (!responseAuth) throw new Error("Autenticação Falhou!")
+            return responseHTTP<ResponseAuth>(responseAuth, 200)
         } catch (error: any) {
             return responseHTTP<string>(error.message, 400)
         }
@@ -86,37 +94,7 @@ export class UserService {
                 name: userSave.name,
                 option: "create",
             })
-            return responseHTTP<string>("Pronto", 201)
-
-            // let existsUser = await this.repository.exists(newUser)
-            // if (!!existsUser) throw new Error("Usuário Existente!")
-            // newUser = this.user.validateUser(newUser)
-
-            // // let userAuth = await authEmail(newUser.email)
-            // // if (!userAuth) throw new Error("Email inválido!")
-            // newUser = encryptpwd(newUser)
-            // let userSave = await this.repository.save(newUser)
-            // // sendEmail({
-            // //     email: userSave.email,
-            // //     auth: userAuth,
-            // //     name: userSave.name,
-            // //     option: "create",
-            // // })
-            // return responseHTTP<UserDto>(userSave, 201)
-        } catch (error: any) {
-            return responseHTTP<string>(error.message, 400)
-        }
-    }
-    public async authUser(userAuth: UserDto) {
-        try {
-            userAuth = this.user.validateUser(userAuth)
-            let user = await this.repository.read(userAuth)
-            if (!user) throw new Error("Usuário não encontrado!")
-            let pwdIsEqual = authPassword(userAuth, user.password)
-            if (!pwdIsEqual) throw new Error("Senha Incorreta!")
-            let responseAuth = this.user.returnAuthUser(user)
-            if (!responseAuth) throw new Error("Autenticação Falhou!")
-            return responseHTTP<ResponseAuth>(responseAuth, 200)
+            return responseHTTP<UserDto>(userSave, 201)
         } catch (error: any) {
             return responseHTTP<string>(error.message, 400)
         }
