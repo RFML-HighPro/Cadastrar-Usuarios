@@ -1,6 +1,5 @@
 import { UserDto } from "../../dtos/user.dto"
-import { AlterPwd } from "../../interfaces/interfaces.services"
-import { authPassword } from "../../utils/encryption"
+import { authPassword, encryptpwd } from "../../utils/encryption"
 import { denyNull } from "../../utils/find-not-null"
 import {
     unmaskCpf,
@@ -9,16 +8,24 @@ import {
 } from "../../utils/structure-credentials"
 
 export class ServicesGeneralUser {
-    public validateCredentials(users: UserDto[], newUser: UserDto) {
+    public settingNewPassword(data: UserDto) {
+        if (!!data.newPassword) {
+            data.password = data.newPassword
+            delete data.newPassword
+            data = encryptpwd(data)
+        }
+        return data
+    }
+    public validateCredentials(users: UserDto[], userMain: UserDto) {
         users.forEach((user) => {
-            if (user.cpf === newUser.cpf)
+            if (user.cpf === userMain.cpf)
                 throw new Error("CPF já está sendo usado!")
-            if (user.email === newUser.email)
+            if (user.email === userMain.email)
                 throw new Error("Email já está sendo usado!")
-            if (authPassword(newUser, user.password))
+            if (authPassword(userMain, user.password))
                 throw new Error("Senha já está sendo usada!")
         })
-        return newUser
+        return userMain
     }
     public validateUser(user: UserDto) {
         user = denyNull(user)

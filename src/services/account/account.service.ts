@@ -17,7 +17,6 @@ export class AccountService {
             let accountSave = await this.repositoryAccount.save(newAccount)
             return responseHTTP<AccountDto>(accountSave, 201)
         } catch (error: any) {
-            console.log(error)
             return responseHTTP<string>(error.message, 400)
         }
     }

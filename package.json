@@ -28,6 +28,7 @@
         "dotenv": "^16.4.5",
         "express": "^4.18.3",
         "hunter.io": "^0.2.7",
+        "infosimples-sdk": "^0.3.3",
         "nodemailer": "^6.9.12",
         "pg": "^8.11.3",
         "pg-query-stream": "^4.5.3",
