@@ -1,0 +1,37 @@
+{
+    "name": "sign-up-user",
+    "version": "1.0.0",
+    "description": "Create system generalized for create, read, update and delete resources within of subject register",
+    "main": "main.js",
+    "scripts": {
+        "start:dev": "nodemon",
+        "migration:create": "typeorm migration:create -n CreateUser",
+        "migration:generate": "typeorm-ts-node-commonjs -d ./src/database/data-source.ts migration:generate ./src/migrations/default",
+        "migration:run": "typeorm-ts-node-commonjs -d ./src/database/data-source.ts migration:run"
+    },
+    "author": "Ryan Felipe Melo de Lima",
+    "license": "ISC",
+    "devDependencies": {
+        "@types/express": "^4.17.21",
+        "@types/node": "^20.11.25",
+        "@types/nodemailer": "^6.4.14",
+        "nodemon": "^3.1.0",
+        "ts-node": "^10.9.2",
+        "typeorm": "^0.3.20"
+    },
+    "dependencies": {
+        "@types/axios": "^0.14.0",
+        "@types/bcrypt": "^5.0.2",
+        "axios": "^1.6.7",
+        "bcrypt": "^5.1.1",
+        "date-fns": "^3.4.0",
+        "dotenv": "^16.4.5",
+        "express": "^4.18.3",
+        "hunter.io": "^0.2.7",
+        "nodemailer": "^6.9.12",
+        "pg": "^8.11.3",
+        "pg-query-stream": "^4.5.3",
+        "reflect-metadata": "^0.2.1",
+        "typeorm": "^0.3.20"
+    }
+}
